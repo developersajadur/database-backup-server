@@ -22,7 +22,6 @@ services:
       - BACKUP_DIR=/app/backups
     volumes:
       - backups:/app/backups
-      - ${HOME}/.config/rclone:/root/.config/rclone:ro
 
 volumes:
   postgres_data:

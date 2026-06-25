@@ -19,6 +19,7 @@ export const env = {
   ALERT_EMAIL: process.env.ALERT_EMAIL || '',
 
   // Rclone
+  RCLONE_CONFIG_BASE64: process.env.RCLONE_CONFIG_BASE64 || '',
   RCLONE_REMOTE: process.env.RCLONE_REMOTE || 'gdrive',
   RCLONE_FOLDER: process.env.RCLONE_FOLDER || 'DatabaseBackups',
 
