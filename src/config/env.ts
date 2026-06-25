@@ -11,6 +11,10 @@ export const env = {
   DB_USER: process.env.DB_USER || '',
   DB_PASSWORD: process.env.DB_PASSWORD || '',
 
+  // Admin credentials (for CREATE/DROP DATABASE — falls back to DB_USER/DB_PASSWORD)
+  DB_ADMIN_USER: process.env.DB_ADMIN_USER || process.env.DB_USER || '',
+  DB_ADMIN_PASSWORD: process.env.DB_ADMIN_PASSWORD || process.env.DB_PASSWORD || '',
+
   // Email (SMTP)
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
   SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),

@@ -5,7 +5,9 @@ async function main() {
   const backup = process.argv[2];
 
   if (!backup) {
-    console.error('Usage: npm run restore backups/backup.sql.gz');
+    console.error('Usage:');
+    console.error('  Local:   npm run restore backups/backup.sql.gz');
+    console.error('  Remote:  npm run restore gdrive:DatabaseBackups/backup.sql.gz');
     process.exit(1);
   }
 

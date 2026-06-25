@@ -114,6 +114,17 @@ ${(result.duration / 1000).toFixed(2)} sec
 <tr>
 <td
 style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+SHA256
+</td>
+
+<td style="padding:14px;border-bottom:1px solid #ececec;word-break:break-all;font-size:13px;">
+${result.sha256 ? result.sha256.slice(0, 16) + '...' : 'N/A'}
+</td>
+</tr>
+
+<tr>
+<td
+style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
 Remote Backup
 </td>
 
@@ -234,6 +245,9 @@ export async function sendRestoreReport(result: RestoreResult): Promise<void> {
     ? `🔄 Restore Successful — ${env.DB_NAME}`
     : `❌ Restore Failed — ${env.DB_NAME}`;
 
+  const checkmark = (ok: boolean) => ok ? '✅ Passed' : '❌ Failed';
+  const checkColor = (ok: boolean) => ok ? '#16a34a' : '#dc2626';
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -251,9 +265,9 @@ style="width:650px;max-width:100%;background:#ffffff;border-radius:12px;overflow
 
 <tr>
 <td
-style="padding:28px;background:${result.success ? "#16a34a" : "#dc2626"};color:#fff;text-align:center;">
+style="padding:28px;background:${result.success ? '#16a34a' : '#dc2626'};color:#fff;text-align:center;">
 <h1 style="margin:0;font-size:26px;">
-${result.success ? "🔄 Restore Successful" : "❌ Restore Failed"}
+${result.success ? '🔄 Restore Successful' : '❌ Restore Failed'}
 </h1>
 <p style="margin-top:10px;font-size:15px;opacity:.95;">
 Database Restore Report
@@ -265,7 +279,7 @@ Database Restore Report
 <td style="padding:30px;">
 
 <p style="margin-top:0;color:#6b7280;font-size:15px;">
-Database restore has ${result.success ? "completed successfully." : "failed."}
+Database restore has ${result.success ? 'completed successfully.' : 'failed.'}
 </p>
 
 <table style="width:100%;border-collapse:collapse;font-size:15px;">
@@ -284,9 +298,9 @@ ${env.DB_NAME}
 Status
 </td>
 <td style="padding:14px;border-bottom:1px solid #ececec;color:${
-    result.success ? "#16a34a" : "#dc2626"
+    result.success ? '#16a34a' : '#dc2626'
   };font-weight:bold;">
-${result.success ? "Success ✅" : "Failed ❌"}
+${result.success ? 'Success ✅' : 'Failed ❌'}
 </td>
 </tr>
 
@@ -310,12 +324,74 @@ ${formatBytes(result.fileSize)}
 
 <tr>
 <td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
-Integrity Check
+SHA256
 </td>
-<td style="padding:14px;border-bottom:1px solid #ececec;color:${
-    result.integrityOk ? "#16a34a" : "#dc2626"
-  };">
-${result.integrityOk ? "✅ Passed" : "❌ Failed"}
+<td style="padding:14px;border-bottom:1px solid #ececec;color:${checkColor(result.sha256Ok)};">
+${checkmark(result.sha256Ok)}
+${result.sha256Expected !== 'skipped' ? ` <span style="color:#9ca3af;font-size:12px;">(${result.sha256Expected.slice(0, 12)}...)</span>` : ''}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+gzip Integrity
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;color:${checkColor(result.gzipOk)};">
+${checkmark(result.gzipOk)}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Temp Database
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;">
+${result.tempDbName}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Restore to Temp
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;color:${checkColor(result.restoreOk)};">
+${checkmark(result.restoreOk)}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Tables Found
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;">
+${result.tableCount}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Approx. Rows
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;">
+${result.rowCount.toLocaleString()}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Validation
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;color:${checkColor(result.validationOk)};">
+${checkmark(result.validationOk)}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Swap
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;color:${checkColor(result.swapped)};">
+${result.swapped ? '✅ Promoted to target' : '❌ Not performed'}
 </td>
 </tr>
 
@@ -340,7 +416,7 @@ ${result.error}
 </td>
 </tr>
 `
-    : ""
+    : ''
 }
 
 </table>
@@ -352,6 +428,7 @@ ${
 <strong>✔ Restore completed successfully.</strong>
 <p style="margin:8px 0 0;">
 Database <strong>${env.DB_NAME}</strong> has been restored from <strong>${result.fileName}</strong>.
+All checks passed — SHA256, gzip, restore, validation, and swap.
 </p>
 </div>
 `
@@ -359,7 +436,8 @@ Database <strong>${env.DB_NAME}</strong> has been restored from <strong>${result
 <div style="margin-top:28px;padding:18px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;">
 <strong>⚠ Restore failed.</strong>
 <p style="margin:8px 0 0;">
-The restore operation did not complete. The database has been rolled back to its previous state (--single-transaction).
+The restore operation did not complete successfully. Target database <strong>${env.DB_NAME}</strong> remains untouched.
+Temp database <strong>${result.tempDbName}</strong> has been dropped.
 </p>
 </div>
 `

@@ -407,48 +407,113 @@ rclone ls gdrive:DatabaseBackups
 
 ## Restore a Backup
 
-### Download from Google Drive
+### Enterprise Restore Pipeline
 
-```bash
-# List backups in remote
-rclone ls gdrive:DatabaseBackups
-
-# Download a specific backup
-rclone copy gdrive:DatabaseBackups/backup-mydb-2026-06-26T02-00-00.sql.gz ./backups/
+```
+Download Backup (.sql.gz + .sha256)
+        │
+        ▼
+Verify SHA256 ────────────────── fail → abort (target untouched)
+        │ pass
+        ▼
+Verify gzip integrity ───────── fail → abort (target untouched)
+        │ pass
+        ▼
+Create Temporary Database (${DB_NAME}_restore_temp)
+        │
+        ▼
+Restore into Temporary Database
+        │
+        ▼
+Run Validation (table count, row count)
+        │
+        ▼
+Generate HTML Report + Send Email
+        │
+        ▼
+If validation passes:
+  Terminate connections → Drop target → Rename temp → target
+        │
+        ▼
+If anything fails:
+  Drop temp DB → Target database remains untouched
 ```
 
-### Restore to database
+**Safety guarantees:**
+- SHA256 checksum verification prevents corrupted/tampered files
+- gzip integrity test catches archive corruption early
+- Restore happens into a **temporary database** — never directly into target
+- Validation (table count > 0, row counts) before swap
+- If any step fails, temp DB is dropped, target DB is **never touched**
+- Email report shows every step result with ✅/❌
+
+### Prerequisites for Restore
+
+You need database admin credentials with `CREATE DATABASE` and `DROP DATABASE` privileges:
 
 ```bash
-# Build first (if not already)
+# .env
+DB_ADMIN_USER=postgres
+DB_ADMIN_PASSWORD=your_admin_password
+```
+
+If `DB_ADMIN_USER`/`DB_ADMIN_PASSWORD` are not set, they fall back to `DB_USER`/`DB_PASSWORD`.
+
+### Restore from Local File
+
+```bash
+# Build first
 pnpm build
 
-# Restore
+# Restore (expects .sha256 file alongside)
 pnpm restore backups/backup-mydb-2026-06-26T02-00-00.sql.gz
 
-# Or during development (no build needed)
+# Or during development
 pnpm restore:dev backups/backup-mydb-2026-06-26T02-00-00.sql.gz
 ```
 
-### What happens during restore
+### Restore from Rclone Remote (auto-download)
 
-| Step | Description |
-|---|---|
-| 1. File check | Verifies file exists and is `.sql.gz` |
-| 2. Integrity check | `gzip -t` — verifies archive not corrupted |
-| 3. Restore | `gunzip -c \| psql` — pipe into database with `--single-transaction` + `ON_ERROR_STOP=1` |
+```bash
+# Pass rclone remote path directly
+pnpm restore gdrive:DatabaseBackups/backup-mydb-2026-06-26T02-00-00.sql.gz
 
-If any step fails, the entire restore rolls back (single transaction). Production database stays untouched.
+# This automatically:
+# 1. Downloads .sql.gz + .sha256 from remote
+# 2. Runs the full enterprise pipeline
+```
 
 ### Restore via Docker
 
 ```bash
-# Copy backup into container
+# From local file
 docker cp backup.sql.gz db-backup-server:/app/backups/
-
-# Run restore
+docker cp backup.sql.gz.sha256 db-backup-server:/app/backups/
 docker exec db-backup-server node dist/restore/restore.js /app/backups/backup.sql.gz
+
+# From remote
+docker exec db-backup-server node dist/restore/restore.js gdrive:DatabaseBackups/backup.sql.gz
 ```
+
+### Email Report Example
+
+The restore email shows:
+
+| Field | Example |
+|---|---|
+| Database | `my_database` |
+| Status | Success ✅ |
+| Backup File | `backup-my_db-2026-06-26T02-00-00.sql.gz` |
+| File Size | `12.4 MB` |
+| SHA256 | ✅ Passed (`a1b2c3d4e5f6...`) |
+| gzip Integrity | ✅ Passed |
+| Temp Database | `my_database_restore_temp` |
+| Restore to Temp | ✅ Passed |
+| Tables Found | `24` |
+| Approx. Rows | `152,843` |
+| Validation | ✅ Passed |
+| Swap | ✅ Promoted to target |
+| Duration | `8.32 sec` |
 
 ---
 
@@ -512,6 +577,8 @@ Check the remote folder name is correct. `rclone lsd gdrive:` to list folders. T
 | `DB_NAME` | Yes | — | Database name |
 | `DB_USER` | Yes | — | Database user |
 | `DB_PASSWORD` | Yes | — | Database password |
+| `DB_ADMIN_USER` | No | `DB_USER` | Admin user for restore (CREATE/DROP DATABASE) |
+| `DB_ADMIN_PASSWORD` | No | `DB_PASSWORD` | Admin password for restore |
 | `RCLONE_CONFIG_BASE64` | No | — | Base64-encoded rclone.conf |
 | `RCLONE_REMOTE` | No | `gdrive` | Rclone remote name |
 | `RCLONE_FOLDER` | No | `DatabaseBackups` | Remote folder path |
