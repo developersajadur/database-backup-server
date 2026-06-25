@@ -405,6 +405,53 @@ rclone ls gdrive:DatabaseBackups
 
 ---
 
+## Restore a Backup
+
+### Download from Google Drive
+
+```bash
+# List backups in remote
+rclone ls gdrive:DatabaseBackups
+
+# Download a specific backup
+rclone copy gdrive:DatabaseBackups/backup-mydb-2026-06-26T02-00-00.sql.gz ./backups/
+```
+
+### Restore to database
+
+```bash
+# Build first (if not already)
+pnpm build
+
+# Restore
+pnpm restore backups/backup-mydb-2026-06-26T02-00-00.sql.gz
+
+# Or during development (no build needed)
+pnpm restore:dev backups/backup-mydb-2026-06-26T02-00-00.sql.gz
+```
+
+### What happens during restore
+
+| Step | Description |
+|---|---|
+| 1. File check | Verifies file exists and is `.sql.gz` |
+| 2. Integrity check | `gzip -t` — verifies archive not corrupted |
+| 3. Restore | `gunzip -c \| psql` — pipe into database with `--single-transaction` + `ON_ERROR_STOP=1` |
+
+If any step fails, the entire restore rolls back (single transaction). Production database stays untouched.
+
+### Restore via Docker
+
+```bash
+# Copy backup into container
+docker cp backup.sql.gz db-backup-server:/app/backups/
+
+# Run restore
+docker exec db-backup-server node dist/restore/restore.js /app/backups/backup.sql.gz
+```
+
+---
+
 ## Troubleshooting
 
 ### "RCLONE_CONFIG_BASE64 not set"

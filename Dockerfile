@@ -7,6 +7,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         postgresql-client \
         rclone \
+        gzip \
         ca-certificates \
         curl && \
     rm -rf /var/lib/apt/lists/*

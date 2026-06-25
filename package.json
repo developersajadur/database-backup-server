@@ -7,7 +7,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "backup": "ts-node src/index.ts --now"
+    "backup": "ts-node src/index.ts --now",
+    "restore": "node dist/restore/restore.js",
+    "restore:dev": "ts-node src/restore/restore.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

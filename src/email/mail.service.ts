@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { env } from "../config/env";
 import { logger } from "../logger/logger";
 import type { BackupResult } from "../backup/backup.service";
+import type { RestoreResult } from "../restore/restore.service";
 import { formatBytes } from "../utils";
 
 const transporter = nodemailer.createTransport({
@@ -220,5 +221,183 @@ ${new Date().toLocaleString()}
     logger.info("Backup report email sent.");
   } catch (error: any) {
     logger.error(`Failed to send email: ${error.message}`);
+  }
+}
+
+export async function sendRestoreReport(result: RestoreResult): Promise<void> {
+  if (!env.ALERT_EMAIL) {
+    logger.warn("No alert email configured. Skipping restore report.");
+    return;
+  }
+
+  const subject = result.success
+    ? `🔄 Restore Successful — ${env.DB_NAME}`
+    : `❌ Restore Failed — ${env.DB_NAME}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+</head>
+<body style="margin:0;padding:30px;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+<tr>
+<td align="center">
+
+<table role="presentation"
+style="width:650px;max-width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+
+<tr>
+<td
+style="padding:28px;background:${result.success ? "#16a34a" : "#dc2626"};color:#fff;text-align:center;">
+<h1 style="margin:0;font-size:26px;">
+${result.success ? "🔄 Restore Successful" : "❌ Restore Failed"}
+</h1>
+<p style="margin-top:10px;font-size:15px;opacity:.95;">
+Database Restore Report
+</p>
+</td>
+</tr>
+
+<tr>
+<td style="padding:30px;">
+
+<p style="margin-top:0;color:#6b7280;font-size:15px;">
+Database restore has ${result.success ? "completed successfully." : "failed."}
+</p>
+
+<table style="width:100%;border-collapse:collapse;font-size:15px;">
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;width:35%;">
+Database
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;">
+${env.DB_NAME}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Status
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;color:${
+    result.success ? "#16a34a" : "#dc2626"
+  };font-weight:bold;">
+${result.success ? "Success ✅" : "Failed ❌"}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Backup File
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;word-break:break-all;">
+${result.fileName}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+File Size
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;">
+${formatBytes(result.fileSize)}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Integrity Check
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;color:${
+    result.integrityOk ? "#16a34a" : "#dc2626"
+  };">
+${result.integrityOk ? "✅ Passed" : "❌ Failed"}
+</td>
+</tr>
+
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;">
+Duration
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;">
+${(result.duration / 1000).toFixed(2)} sec
+</td>
+</tr>
+
+${
+  result.error
+    ? `
+<tr>
+<td style="padding:14px;border-bottom:1px solid #ececec;font-weight:bold;color:#dc2626;">
+Error
+</td>
+<td style="padding:14px;border-bottom:1px solid #ececec;color:#dc2626;">
+${result.error}
+</td>
+</tr>
+`
+    : ""
+}
+
+</table>
+
+${
+  result.success
+    ? `
+<div style="margin-top:28px;padding:18px;border-radius:8px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;">
+<strong>✔ Restore completed successfully.</strong>
+<p style="margin:8px 0 0;">
+Database <strong>${env.DB_NAME}</strong> has been restored from <strong>${result.fileName}</strong>.
+</p>
+</div>
+`
+    : `
+<div style="margin-top:28px;padding:18px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;">
+<strong>⚠ Restore failed.</strong>
+<p style="margin:8px 0 0;">
+The restore operation did not complete. The database has been rolled back to its previous state (--single-transaction).
+</p>
+</div>
+`
+}
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:22px;text-align:center;background:#f9fafb;border-top:1px solid #e5e7eb;">
+<p style="margin:0;font-size:13px;color:#6b7280;">
+Generated automatically by <strong>Backup Service</strong>
+</p>
+<p style="margin-top:6px;font-size:12px;color:#9ca3af;">
+${new Date().toLocaleString()}
+</p>
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`;
+
+  try {
+    await transporter.sendMail({
+      from: env.SMTP_USER,
+      to: env.ALERT_EMAIL,
+      subject,
+      html,
+    });
+    logger.info("Restore report email sent.");
+  } catch (error: any) {
+    logger.error(`Failed to send restore email: ${error.message}`);
   }
 }
