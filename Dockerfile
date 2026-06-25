@@ -1,17 +1,18 @@
-FROM node:20-alpine
-
-RUN apk add --no-cache postgresql-client rclone
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN apt-get update && \
+    apt-get install -y postgresql-client curl && \
+    curl https://rclone.org/install.sh | bash && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY package.json pnpm-lock.yaml ./
+
+RUN corepack enable && pnpm install --frozen-lockfile
 
 COPY . .
-RUN npm run build
 
-ENV BACKUP_DIR=/app/backups
-
-RUN mkdir -p ${BACKUP_DIR}
+RUN pnpm build
 
 CMD ["node", "dist/index.js"]
