@@ -1,4 +1,4 @@
-import { createPostgresBackup, cleanupOldBackups } from './postgres';
+import { createPostgresBackup } from './postgres';
 import { uploadToDrive } from '../drive/rclone.service';
 import { sendBackupReport } from '../email/mail.service';
 import { logger } from '../logger/logger';
@@ -22,12 +22,9 @@ export async function runBackup(): Promise<BackupResult> {
     result.localPath = localPath;
     result.backupSize = backupSize;
 
-    // Step 2: Upload via rclone to remote
-    const uploadResult = await uploadToDrive(localPath);
+    // Step 2: Upload to remote, then delete local
+    const uploadResult = await uploadToDrive(localPath, true);
     result.remoteFile = uploadResult.remoteFile;
-
-    // Step 3: Cleanup old local backups
-    await cleanupOldBackups();
 
     result.success = true;
     logger.info('Backup pipeline completed successfully.');
@@ -36,7 +33,6 @@ export async function runBackup(): Promise<BackupResult> {
     logger.error(`Backup pipeline failed: ${error.message}`);
   } finally {
     result.duration = Date.now() - start;
-    // Send email report regardless of success/failure
     await sendBackupReport(result);
   }
 

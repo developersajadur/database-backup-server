@@ -26,30 +26,12 @@ export async function createPostgresBackup(): Promise<BackupFile> {
 
   logger.info('Starting PostgreSQL backup...');
   try {
-    await execAsync(command); 
+    await execAsync(command);
     const { size } = fs.statSync(filePath);
     logger.info(`Backup created: ${filePath} (${(size / 1024 / 1024).toFixed(2)} MB)`);
     return { filePath, size };
   } catch (error: any) {
     logger.error(`Backup failed: ${error.message}`);
     throw error;
-  }
-}
-
-export async function cleanupOldBackups(): Promise<void> {
-  const backupDir = env.BACKUP_DIR;
-  if (!fs.existsSync(backupDir)) return;
-
-  const files = fs.readdirSync(backupDir);
-  const now = Date.now();
-  const maxAge = env.BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-
-  for (const file of files) {
-    const filePath = path.join(backupDir, file);
-    const stat = fs.statSync(filePath);
-    if (now - stat.mtimeMs > maxAge) {
-      fs.unlinkSync(filePath);
-      logger.info(`Removed old backup: ${file}`);
-    }
   }
 }

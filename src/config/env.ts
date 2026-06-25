@@ -26,11 +26,8 @@ export const env = {
   // Cron schedule (default: daily at 2 AM)
   BACKUP_CRON_SCHEDULE: process.env.BACKUP_CRON_SCHEDULE || '0 2 * * *',
 
-  // Backup directory
+  // Backup directory (temp — file deleted after upload)
   BACKUP_DIR: process.env.BACKUP_DIR || '/app/backups',
-
-  // Retention: days to keep local backups before cleanup
-  BACKUP_RETENTION_DAYS: parseInt(process.env.BACKUP_RETENTION_DAYS || '7', 10),
 
   // App
   NODE_ENV: process.env.NODE_ENV || 'development',

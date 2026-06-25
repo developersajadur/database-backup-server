@@ -36,7 +36,7 @@ Complete guide: rclone config, env setup, local dev, Docker, Coolify deploy.
 Cron schedule triggers (or --now flag)
     │
     ▼
-pg_dump → gzip → local .sql.gz file
+pg_dump → gzip → temp local .sql.gz file
     │
     ▼
 rclone copyto → Google Drive (checksum + verify)
@@ -45,7 +45,7 @@ rclone copyto → Google Drive (checksum + verify)
 Delete old remote backups (keep latest)
     │
     ▼
-Cleanup local backups older than BACKUP_RETENTION_DAYS
+Delete local temp file
     │
     ▼
 Send email report (success or failure)
@@ -207,9 +207,6 @@ ALERT_EMAIL=alerts@example.com
 # Cron (default: daily at 2 AM)
 BACKUP_CRON_SCHEDULE=0 2 * * *
 
-# Retention (default: 7 days)
-BACKUP_RETENTION_DAYS=7
-
 # App
 NODE_ENV=production
 LOG_LEVEL=info
@@ -233,7 +230,6 @@ LOG_LEVEL=info
 | `SMTP_PASS` | Step 2 above — Google App Password |
 | `ALERT_EMAIL` | Where to send reports |
 | `BACKUP_CRON_SCHEDULE` | [crontab.guru](https://crontab.guru) |
-| `BACKUP_RETENTION_DAYS` | Days to keep local files |
 | `NODE_ENV` | `production` or `development` |
 | `LOG_LEVEL` | `info`, `debug`, `warn`, `error` |
 
@@ -269,6 +265,7 @@ pnpm dev
 [INFO] Backup created: /app/backups/backup-mydb-2026-06-26T02-00-00.sql.gz (12.4 MB)
 [INFO] Uploading backup-mydb-... via rclone to gdrive:DatabaseBackups...
 [INFO] Uploaded: gdrive:DatabaseBackups/backup-mydb-...
+[INFO] Local backup deleted.
 [INFO] Backup pipeline completed successfully.
 [INFO] Backup report email sent.
 [INFO] Scheduling backup cron: 0 2 * * *
@@ -299,6 +296,7 @@ SMTP_PORT=587
 SMTP_USER=you@gmail.com
 SMTP_PASS=yourapppassword
 ALERT_EMAIL=you@gmail.com
+BACKUP_CRON_SCHEDULE=0 2 * * *
 EOF
 
 # 2. Build and start
@@ -341,7 +339,6 @@ SMTP_USER=you@gmail.com
 SMTP_PASS=yourapppassword
 ALERT_EMAIL=you@gmail.com
 BACKUP_CRON_SCHEDULE=0 2 * * *
-BACKUP_RETENTION_DAYS=7
 NODE_ENV=production
 LOG_LEVEL=info
 ```
@@ -402,8 +399,8 @@ rclone ls gdrive:DatabaseBackups
 # 6. Cron is scheduled
 # Look for: "Scheduling backup cron: 0 2 * * *" in logs
 
-# 7. Old backups get cleaned up
-# After BACKUP_RETENTION_DAYS, local files are removed automatically
+# 7. Local temp file deleted after upload
+# Should see: "Local backup deleted" in logs
 ```
 
 ---
@@ -471,9 +468,8 @@ Check the remote folder name is correct. `rclone lsd gdrive:` to list folders. T
 | `RCLONE_CONFIG_BASE64` | No | — | Base64-encoded rclone.conf |
 | `RCLONE_REMOTE` | No | `gdrive` | Rclone remote name |
 | `RCLONE_FOLDER` | No | `DatabaseBackups` | Remote folder path |
-| `BACKUP_DIR` | No | `/app/backups` | Local backup directory |
+| `BACKUP_DIR` | No | `/app/backups` | Temp backup directory (file deleted after upload) |
 | `BACKUP_CRON_SCHEDULE` | No | `0 2 * * *` | Cron expression |
-| `BACKUP_RETENTION_DAYS` | No | `7` | Days to retain local backups |
 | `SMTP_HOST` | No | `smtp.gmail.com` | SMTP server |
 | `SMTP_PORT` | No | `587` | SMTP port |
 | `SMTP_USER` | No | — | SMTP username |
