@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+build/
+
+.env
+
+# Environment variables
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Prisma
+prisma/migrations/*
+!prisma/migrations/.gitkeep
+!prisma/migrations/20260619160000_reconcile_document_payments/
+!prisma/migrations/20260619160000_reconcile_document_payments/migration.sql
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+docs/prompt.md
+docs/document creation implementation guide.md
+docs/refresh token frontend integration guide.md
+docs/loginresponsenonsueradmin.json
+docs/document-creation-test.md
+docs/frontend_implementation_guide_enhenced.md
+docs/pdf-system-reference.md

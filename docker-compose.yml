@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: postgres-backup-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: backup_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  backup:
+    build: .
+    container_name: db-backup-server
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - BACKUP_DIR=/app/backups
+    volumes:
+      - backups:/app/backups
+      - ${HOME}/.config/rclone:/root/.config/rclone:ro
+
+volumes:
+  postgres_data:
+  backups:
